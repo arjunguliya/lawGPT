@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import json
@@ -7,8 +7,10 @@ import json
 # Load environment variables
 load_dotenv()
 
-# Set OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Get OpenAI API key from environment or secrets
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key and "OPENAI_API_KEY" in st.secrets:
+    api_key = st.secrets["OPENAI_API_KEY"]
 
 # Set page config
 st.set_page_config(page_title="LawGPT API", page_icon="⚖️")
@@ -16,12 +18,15 @@ st.set_page_config(page_title="LawGPT API", page_icon="⚖️")
 # Add API key input in the sidebar
 with st.sidebar:
     st.title("LawGPT API")
-    api_key = st.text_input("OpenAI API Key", type="password")
-    if api_key:
-        openai.api_key = api_key
+    user_api_key = st.text_input("OpenAI API Key", type="password")
+    if user_api_key:
+        api_key = user_api_key
     
     st.divider()
     st.markdown("This is the backend API for LawGPT")
+
+# Initialize OpenAI client
+client = OpenAI(api_key=api_key)
 
 # Create API endpoints
 st.title("LawGPT API")
@@ -33,22 +38,30 @@ if "messages" not in st.session_state:
 # Function to handle the query
 def process_query(query):
     try:
-        # Your existing code to process the query
-        completion = openai.ChatCompletion.create(
+        # Check if API key is available
+        if not api_key:
+            return {
+                "answer": "Error: Please provide an OpenAI API key in the sidebar or through environment variables.",
+                "status": "error"
+            }
+            
+        # Call the OpenAI API with the new client
+        completion = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a legal assistant helping with legal questions."},
+                {"role": "system", "content": "You are a legal assistant helping with legal questions. Provide accurate and helpful information, but make it clear when someone should consult with a qualified legal professional."},
                 {"role": "user", "content": query}
             ]
         )
         
+        # Extract the response using the new format
         return {
             "answer": completion.choices[0].message.content,
             "status": "success"
         }
     except Exception as e:
         return {
-            "answer": str(e),
+            "answer": f"Error: {str(e)}",
             "status": "error"
         }
 
@@ -61,7 +74,10 @@ with st.form("query_form"):
         with st.spinner("Processing..."):
             result = process_query(query)
             st.markdown("### Response:")
-            st.write(result["answer"])
+            if result["status"] == "success":
+                st.write(result["answer"])
+            else:
+                st.error(result["answer"])
 
 # API simulation section
 st.divider()
@@ -120,4 +136,7 @@ if "query" in query_params:
     with st.spinner("Processing..."):
         result = process_query(query_from_url)
         st.markdown("### Response:")
-        st.write(result["answer"])
+        if result["status"] == "success":
+            st.write(result["answer"])
+        else:
+            st.error(result["answer"])
