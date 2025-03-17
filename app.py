@@ -121,3 +121,5 @@ if input_prompt:
         st.button('Reset All Chat 🗑️', on_click=reset_conversation)
 
     st.session_state.messages.append({"role":"assistant","content":result["answer"]})
+
+app = app
