@@ -3,6 +3,11 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import json
+from streamlit.web.server.websocket_headers import _get_websocket_headers
+import hmac
+import requests
+from flask import Flask, request, jsonify
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -72,7 +77,7 @@ with st.form("query_form"):
             else:
                 st.error(result["answer"])
 
-# Handle query parameters - simplified to avoid redirect loops
+# Handle query parameters for direct access
 query_params = st.experimental_get_query_params()
 if "query" in query_params and query_params["query"][0]:
     query_from_url = query_params["query"][0]
@@ -89,55 +94,91 @@ if "query" in query_params and query_params["query"][0]:
             else:
                 st.error(result["answer"])
 
-# API simulation section
-st.divider()
-st.header("API Simulation")
-st.markdown("This section allows you to test the API as if you were calling it from your frontend.")
+# Create a Flask API endpoint
+app = Flask(__name__)
 
-with st.expander("Try API Call"):
-    api_query = st.text_area("Query JSON:", value='{"query": "What are my legal rights as a tenant?"}')
+@app.route('/api/query', methods=['POST', 'OPTIONS'])
+def api_query():
+    # Handle CORS preflight request
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'success'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response
+        
+    # Handle POST request
+    data = request.json
+    if not data or 'query' not in data:
+        return jsonify({'error': 'Query is required'}), 400
+        
+    result = process_query(data['query'])
     
-    if st.button("Send Request"):
-        try:
-            query_data = json.loads(api_query)
-            if "query" in query_data:
-                with st.spinner("Processing API request..."):
-                    result = process_query(query_data["query"])
-                    st.json(result)
-            else:
-                st.error("JSON must contain a 'query' field")
-        except json.JSONDecodeError:
-            st.error("Invalid JSON format")
+    # Add CORS headers
+    response = jsonify(result)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+# Start the Flask server in a separate thread
+def run_flask_app():
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=8501)
+
+# Start Flask in a background thread
+threading.Thread(target=run_flask_app, daemon=True).start()
 
 # Add API documentation
 st.divider()
 st.header("API Documentation")
 
 api_docs = """
-### How to use this API
+### API Endpoints
 
-Since this is hosted on Streamlit, which isn't designed for pure API usage, you have two options:
+This application provides both a visual interface and a REST API endpoint:
 
-1. **Direct user interaction**: Send users directly to this page to ask questions
-2. **Iframe integration**: Embed this Streamlit app in your frontend using an iframe
+**POST /api/query**
 
-For frontend integration, update your API service to use this URL.
+Request body:
+```json
+{
+    "query": "Your legal question here"
+}
+```
+
+Response:
+```json
+{
+    "answer": "The response to your legal question",
+    "status": "success"
+}
+```
+
+You can use this endpoint directly from your frontend application.
 """
 
 st.markdown(api_docs)
 
-# Instructions for setting up the API key
-st.warning("⚠️ Important: Make sure to add your OpenAI API key in the sidebar to use this app, or add it to Streamlit secrets!")
-
-# Simplified frontend connection instructions
-st.subheader("Frontend Connection")
+# Instructions for frontend developers
+st.subheader("Connecting to the API")
 st.code("""
-// In your frontend React code
-const API_URL = 'https://your-streamlit-app-url.streamlit.app';
-
+// Example API call in JavaScript
 const fetchLegalAdvice = async (query) => {
-  return {
-    queryUrl: `${API_URL}?query=${encodeURIComponent(query)}`
-  };
+  try {
+    const response = await fetch('https://your-streamlit-app-url.streamlit.app/api/query', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error:', error);
+    return { status: 'error', answer: 'Failed to connect to the API' };
+  }
 };
 """, language="javascript")
+
+# Instructions for setting up the API key
+st.warning("⚠️ Important: Make sure to add your OpenAI API key in the sidebar to use this app, or add it to Streamlit secrets!")
