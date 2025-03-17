@@ -7,3 +7,8 @@ faiss-cpu
 streamlit
 langchain-fireworks
 einops
+
+flask==2.2.3
+flask-cors==3.0.10
+openai==0.27.0
+python-dotenv==1.0.0
