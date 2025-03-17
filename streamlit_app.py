@@ -66,10 +66,40 @@ with st.form("query_form"):
 # Add API documentation
 st.divider()
 st.header("API Documentation")
-st.markdown(r"""
+
+api_docs = """
 ### POST /api/query
 Send a POST request with JSON body:
 ```json
 {
     "query": "Your legal question here"
 }
+```
+
+Response:
+```json
+{
+    "answer": "The response to your legal question",
+    "status": "success"
+}
+```
+"""
+
+st.markdown(api_docs)
+
+# Add CORS headers for API access
+def set_cors_headers():
+    st.markdown(
+        """
+        <script>
+        // This enables CORS for API requests
+        const meta = document.createElement('meta');
+        meta.httpEquiv = 'Access-Control-Allow-Origin';
+        meta.content = '*';
+        document.head.appendChild(meta);
+        </script>
+        """, 
+        unsafe_allow_html=True
+    )
+
+set_cors_headers()
