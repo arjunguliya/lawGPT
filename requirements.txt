@@ -10,4 +10,6 @@ langchain-fireworks
 einops
 python-dotenv
 openai>=1.0.0
-
+flask
+waitress
+requests
