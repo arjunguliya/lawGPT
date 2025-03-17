@@ -7,13 +7,13 @@ import json
 # Load environment variables
 load_dotenv()
 
-# Get OpenAI API key from environment or secrets
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key and "OPENAI_API_KEY" in st.secrets:
-    api_key = st.secrets["OPENAI_API_KEY"]
-
 # Set page config
 st.set_page_config(page_title="LawGPT API", page_icon="⚖️")
+
+# Get OpenAI API key from environment or secrets
+api_key = os.getenv("OPENAI_API_KEY", "")
+if not api_key and hasattr(st, "secrets") and "OPENAI_API_KEY" in st.secrets:
+    api_key = st.secrets["OPENAI_API_KEY"]
 
 # Add API key input in the sidebar
 with st.sidebar:
@@ -25,8 +25,10 @@ with st.sidebar:
     st.divider()
     st.markdown("This is the backend API for LawGPT")
 
-# Initialize OpenAI client
-client = OpenAI(api_key=api_key)
+# Initialize OpenAI client only if we have an API key
+client = None
+if api_key:
+    client = OpenAI(api_key=api_key)
 
 # Create API endpoints
 st.title("LawGPT API")
@@ -40,6 +42,11 @@ def process_query(query):
                 "answer": "Error: Please provide an OpenAI API key in the sidebar or through environment variables.",
                 "status": "error"
             }
+        
+        # Create client if not already created
+        nonlocal client
+        if client is None:
+            client = OpenAI(api_key=api_key)
             
         # Call the OpenAI API with the new client
         completion = client.chat.completions.create(
@@ -80,7 +87,7 @@ query_params = st.experimental_get_query_params()
 if "query" in query_params and query_params["query"][0]:
     query_from_url = query_params["query"][0]
     
-    # Only show this if we haven't processed it already
+    # Use session state to prevent reprocessing
     if "processed_query" not in st.session_state or st.session_state.processed_query != query_from_url:
         st.session_state.processed_query = query_from_url
         st.info(f"Processing query from URL parameter: {query_from_url}")
@@ -129,11 +136,14 @@ For frontend integration, update your API service to use this URL.
 
 st.markdown(api_docs)
 
+# Instructions for setting up the API key
+st.warning("⚠️ Important: Make sure to add your OpenAI API key in the sidebar to use this app!")
+
 # Simplified frontend connection instructions
 st.subheader("Frontend Connection")
 st.code("""
 // In your frontend React code
-const API_URL = 'https://chatzy-lawgpt.streamlit.app';
+const API_URL = 'https://your-streamlit-app-url.streamlit.app';
 
 const fetchLegalAdvice = async (query) => {
   return {
