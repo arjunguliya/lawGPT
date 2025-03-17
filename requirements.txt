@@ -8,8 +8,8 @@ accelerate
 streamlit
 langchain-fireworks
 einops
+openai
 
 Flask==2.2.3
 Flask-Cors==3.0.10
-openai==0.27.8
 python-dotenv==1.0.0
