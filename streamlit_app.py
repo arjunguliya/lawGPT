@@ -12,8 +12,9 @@ st.set_page_config(page_title="LawGPT API", page_icon="⚖️")
 
 # Get OpenAI API key from environment or secrets
 api_key = os.getenv("OPENAI_API_KEY", "")
-if not api_key and hasattr(st, "secrets") and "OPENAI_API_KEY" in st.secrets:
-    api_key = st.secrets["OPENAI_API_KEY"]
+if not api_key and hasattr(st, "secrets") and "openai" in st.secrets:
+    api_key = st.secrets["openai"]["api_key"]
+
 
 # Add API key input in the sidebar
 with st.sidebar:
