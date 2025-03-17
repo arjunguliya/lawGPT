@@ -66,7 +66,7 @@ with st.form("query_form"):
 # Add API documentation
 st.divider()
 st.header("API Documentation")
-st.markdown(""
+st.markdown("")
 ### POST /api/query
 Send a POST request with JSON body:
 ```json
