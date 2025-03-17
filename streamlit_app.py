@@ -10,11 +10,10 @@ load_dotenv()
 # Set page config
 st.set_page_config(page_title="LawGPT API", page_icon="⚖️")
 
-# Get OpenAI API key from environment or secrets
-api_key = os.getenv("OPENAI_API_KEY", "")
-if not api_key and hasattr(st, "secrets") and "openai" in st.secrets:
+# Get OpenAI API key from Streamlit secrets
+api_key = ""
+if hasattr(st, "secrets") and "openai" in st.secrets:
     api_key = st.secrets["openai"]["api_key"]
-
 
 # Add API key input in the sidebar
 with st.sidebar:
@@ -26,14 +25,6 @@ with st.sidebar:
     st.divider()
     st.markdown("This is the backend API for LawGPT")
 
-# Initialize OpenAI client only if we have an API key
-client = None
-if api_key:
-    client = OpenAI(api_key=api_key)
-
-# Create API endpoints
-st.title("LawGPT API")
-
 # Function to handle the query
 def process_query(query):
     try:
@@ -44,12 +35,10 @@ def process_query(query):
                 "status": "error"
             }
         
-        # Create client if not already created
-        nonlocal client
-        if client is None:
-            client = OpenAI(api_key=api_key)
+        # Create client for this request
+        client = OpenAI(api_key=api_key)
             
-        # Call the OpenAI API with the new client
+        # Call the OpenAI API with the client
         completion = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -138,7 +127,7 @@ For frontend integration, update your API service to use this URL.
 st.markdown(api_docs)
 
 # Instructions for setting up the API key
-st.warning("⚠️ Important: Make sure to add your OpenAI API key in the sidebar to use this app!")
+st.warning("⚠️ Important: Make sure to add your OpenAI API key in the sidebar to use this app, or add it to Streamlit secrets!")
 
 # Simplified frontend connection instructions
 st.subheader("Frontend Connection")
