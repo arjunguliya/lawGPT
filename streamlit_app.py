@@ -31,10 +31,6 @@ client = OpenAI(api_key=api_key)
 # Create API endpoints
 st.title("LawGPT API")
 
-# Add HTTP request handling
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
 # Function to handle the query
 def process_query(query):
     try:
@@ -79,6 +75,23 @@ with st.form("query_form"):
             else:
                 st.error(result["answer"])
 
+# Handle query parameters - simplified to avoid redirect loops
+query_params = st.experimental_get_query_params()
+if "query" in query_params and query_params["query"][0]:
+    query_from_url = query_params["query"][0]
+    
+    # Only show this if we haven't processed it already
+    if "processed_query" not in st.session_state or st.session_state.processed_query != query_from_url:
+        st.session_state.processed_query = query_from_url
+        st.info(f"Processing query from URL parameter: {query_from_url}")
+        with st.spinner("Processing..."):
+            result = process_query(query_from_url)
+            st.markdown("### Response:")
+            if result["status"] == "success":
+                st.write(result["answer"])
+            else:
+                st.error(result["answer"])
+
 # API simulation section
 st.divider()
 st.header("API Simulation")
@@ -116,27 +129,15 @@ For frontend integration, update your API service to use this URL.
 
 st.markdown(api_docs)
 
-# Add connection instructions
+# Simplified frontend connection instructions
 st.subheader("Frontend Connection")
 st.code("""
 // In your frontend React code
-const API_URL = '""" + st.experimental_get_query_params().get("streamlit_server_url", [""])[0] + """';
+const API_URL = 'https://chatzy-lawgpt.streamlit.app';
 
 const fetchLegalAdvice = async (query) => {
-  // Redirect to Streamlit with the query
-  window.location.href = `${API_URL}?query=${encodeURIComponent(query)}`;
+  return {
+    queryUrl: `${API_URL}?query=${encodeURIComponent(query)}`
+  };
 };
 """, language="javascript")
-
-# Handle query parameters
-query_params = st.experimental_get_query_params()
-if "query" in query_params:
-    query_from_url = query_params["query"][0]
-    st.info(f"Processing query from URL parameter: {query_from_url}")
-    with st.spinner("Processing..."):
-        result = process_query(query_from_url)
-        st.markdown("### Response:")
-        if result["status"] == "success":
-            st.write(result["answer"])
-        else:
-            st.error(result["answer"])
